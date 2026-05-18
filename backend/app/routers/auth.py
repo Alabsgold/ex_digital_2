@@ -1,12 +1,11 @@
 """EX-Digital — Authentication router."""
-from __future__ import annotations
 
 import io
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -79,7 +78,7 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         email=data.email.lower(),
         full_name=data.full_name,
         hashed_password=hash_password(data.password),
-        role="student",
+        role=data.role,
         matric_number=data.matric_number.upper() if data.matric_number else None,
         department=data.department,
         level=data.level,
@@ -99,13 +98,14 @@ async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends
     """Login with email or matric number."""
     login_value = data.login.strip()
 
-    # Detect if login is email or matric
-    if "@" in login_value:
-        user = await db.scalar(select(User).where(User.email == login_value.lower()))
-    else:
-        user = await db.scalar(
-            select(User).where(User.matric_number == login_value.upper())
+    user = await db.scalar(
+        select(User).where(
+            or_(
+                User.email == login_value.lower(),
+                User.matric_number == login_value.upper()
+            )
         )
+    )
 
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(

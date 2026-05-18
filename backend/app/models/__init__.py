@@ -252,7 +252,7 @@ class ERPSyncLog(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    sync_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 # ─── Revoked Token ────────────────────────────────────────────────────────────

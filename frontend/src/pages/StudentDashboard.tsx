@@ -7,7 +7,6 @@ import { useCourseStore } from '@/store/courseStore'
 import Layout from '@/components/Layout'
 import StatsCard from '@/components/StatsCard'
 import HelpOverlay from '@/components/HelpOverlay'
-import QrScannerModal from '@/components/QrScannerModal'
 import { StatusBadge } from '@/components/Badge'
 import { countPending } from '@/lib/offlineQueue'
 import { useNetworkStatus } from '@/lib/useNetworkStatus'
@@ -21,7 +20,6 @@ export default function StudentDashboard() {
   const { stats, records, fetchStats, fetchMyAttendance, isLoading } = useAttendanceStore()
   const { courses, fetchCourses } = useCourseStore()
   const { isOnline } = useNetworkStatus()
-  const [qrOpen, setQrOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -78,33 +76,6 @@ export default function StudentDashboard() {
           <StatsCard icon={<Clock size={20} />} title="Pending Sync" value={pendingCount} color="amber" />
         </div>
 
-        {/* Primary action */}
-        <motion.div
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          onClick={() => setQrOpen(true)}
-          className="glass-card p-6 cursor-pointer border-neon-green/25 animate-glow-pulse"
-          style={{ borderColor: 'rgba(0,255,136,0.3)' }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setQrOpen(true)}
-          aria-label="Open QR scanner to mark attendance"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)' }}>
-                <QrCode size={28} className="text-neon-green" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white-text">Mark Attendance</h2>
-                <p className="text-sm text-muted">Scan QR code or enter session code</p>
-              </div>
-            </div>
-            <div className="btn-primary px-6 py-3 text-sm">Open Scanner</div>
-          </div>
-        </motion.div>
-
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Enrolled Courses */}
           <div className="glass-card p-5">
@@ -153,7 +124,6 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <QrScannerModal isOpen={qrOpen} onClose={() => setQrOpen(false)} />
       <HelpOverlay />
     </Layout>
   )

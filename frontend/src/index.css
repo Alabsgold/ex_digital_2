@@ -76,8 +76,8 @@
   /* Glass card */
   .glass-card {
     background: rgba(18, 18, 26, 0.7);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(0, 255, 136, 0.15);
     border-radius: 16px;
     box-shadow: 0 0 30px rgba(0, 255, 136, 0.04);

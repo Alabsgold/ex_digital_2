@@ -23,8 +23,9 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8)
     full_name: str = Field(..., min_length=3, max_length=255)
     matric_number: Optional[str] = Field(
-        None, pattern=r"^[A-Z0-9]{5,20}$"
+        None, pattern=r"^[A-Za-z0-9\-/]{4,25}$"
     )
+    role: Literal["student", "lecturer"] = "student"
     department: Optional[str] = None
     level: Optional[str] = None
 
@@ -268,6 +269,11 @@ class ManualAttendanceRequest(BaseModel):
     session_id: uuid.UUID
     student_id: uuid.UUID
     status: Literal["present", "late"] = "present"
+
+
+class BarcodeScanRequest(BaseModel):
+    session_id: uuid.UUID
+    matric_number: str
 
 
 class AttendanceResponse(BaseModel):

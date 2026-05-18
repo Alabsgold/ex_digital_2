@@ -1,5 +1,4 @@
 """EX-Digital — Attendance router."""
-from __future__ import annotations
 
 import json
 import math
@@ -18,6 +17,7 @@ from app.models import Attendance, Course, Enrollment, Session, User
 from app.schemas import (
     AttendanceResponse,
     ManualAttendanceRequest,
+    BarcodeScanRequest,
     MyAttendanceStats,
     PaginatedAttendance,
     RapidScanRequest,
@@ -236,6 +236,87 @@ async def manual_attendance(
         "matric_number": student.matric_number,
         "marked_at": attendance.marked_at.isoformat(),
         "status": data.status,
+    })
+    try:
+        await redis.publish(f"attendance:{data.session_id}", event_data)
+    except Exception:
+        pass
+
+    return _attendance_to_response(attendance)
+
+
+# ── POST /attendance/barcode-scan ─────────────────────────────────────────────
+
+@router.post("/barcode-scan", response_model=AttendanceResponse)
+async def barcode_scan(
+    data: BarcodeScanRequest,
+    current_user: User = Depends(require_admin_or_lecturer),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    """Lecturer marks attendance by scanning a student's matric number barcode."""
+    session = await db.scalar(
+        select(Session)
+        .options(selectinload(Session.course))
+        .where(Session.id == data.session_id, Session.is_active == True)
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Active session not found.")
+
+    student = await db.scalar(
+        select(User).where(User.matric_number == data.matric_number.upper(), User.role == "student")
+    )
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found with this matric number.")
+
+    enrolled = await db.scalar(
+        select(Enrollment).where(
+            Enrollment.student_id == student.id,
+            Enrollment.course_id == session.course_id,
+            Enrollment.is_active == True,
+        )
+    )
+    if not enrolled:
+        raise HTTPException(status_code=400, detail="Student is not enrolled in this course.")
+
+    duplicate = await db.scalar(
+        select(Attendance).where(
+            Attendance.session_id == data.session_id,
+            Attendance.student_id == student.id,
+        )
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="Attendance already marked for this student.")
+
+    # Calculate lateness
+    started = session.started_at
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    elapsed_minutes = (now - started).total_seconds() / 60
+    att_status = "late" if elapsed_minutes > settings.QR_SCAN_WINDOW_MINUTES else "present"
+
+    attendance = Attendance(
+        session_id=data.session_id,
+        student_id=student.id,
+        course_id=session.course_id,
+        marked_by="barcode_scan",
+        marked_by_user_id=current_user.id,
+        status=att_status,
+        scan_metadata={"scan_type": "lecturer_barcode_scan"},
+    )
+    db.add(attendance)
+    await db.flush()
+
+    # Load relationships for response
+    await db.refresh(attendance, ["student", "course"])
+
+    # Publish to SSE
+    event_data = json.dumps({
+        "student_name": student.full_name,
+        "matric_number": student.matric_number,
+        "marked_at": attendance.marked_at.isoformat(),
+        "status": att_status,
     })
     try:
         await redis.publish(f"attendance:{data.session_id}", event_data)

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Copy, Check, QrCode, Users, Clock, StopCircle } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
+import { X, Copy, Check, Users, Clock, StopCircle, Barcode } from 'lucide-react'
 import { useCourseStore } from '@/store/courseStore'
 import { useSessionStore, Session } from '@/store/sessionStore'
 import { useToast } from '@/components/Toast'
@@ -55,6 +54,8 @@ export default function StartSessionModal({ isOpen, onClose, defaultCourseId }: 
   const [copied, setCopied] = useState(false)
   const [endConfirmOpen, setEndConfirmOpen] = useState(false)
   const [ending, setEnding] = useState(false)
+  const [matricInput, setMatricInput] = useState('')
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => { fetchCourses() }, [])
   useEffect(() => {
@@ -105,6 +106,21 @@ export default function StartSessionModal({ isOpen, onClose, defaultCourseId }: 
       navigator.clipboard.writeText(activeSession.session_code)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handleScan = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!matricInput.trim() || !activeSession) return
+    setScanning(true)
+    try {
+      await useSessionStore.getState().scanBarcode(activeSession.id, matricInput.trim())
+      success(`Attendance marked for ${matricInput.trim()}`)
+      setMatricInput('')
+    } catch (err: any) {
+      toastError(err.message)
+    } finally {
+      setScanning(false)
     }
   }
 
@@ -174,18 +190,36 @@ export default function StartSessionModal({ isOpen, onClose, defaultCourseId }: 
                   <CountdownTimer startedAt={activeSession.started_at} durationMinutes={activeSession.duration_minutes} />
                 </div>
 
-                {/* QR Code */}
-                <div className="flex justify-center">
-                  <div className="p-4 rounded-2xl" style={{ background: '#fff' }}>
-                    <QRCodeSVG value={activeSession.qr_uuid} size={180} />
+                {/* Barcode Scanner Input */}
+                <div className="bg-dark p-4 rounded-xl border border-[rgba(0,255,136,0.15)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Barcode size={18} className="text-neon-green" />
+                    <span className="text-sm font-medium text-white-text">Barcode Scanner</span>
                   </div>
+                  <form onSubmit={handleScan} className="flex gap-2">
+                    <Input
+                      label=""
+                      placeholder="Scan student ID card..."
+                      value={matricInput}
+                      onChange={(e) => setMatricInput(e.target.value)}
+                      autoFocus
+                      disabled={scanning}
+                      className="flex-1 font-mono uppercase"
+                    />
+                    <Button type="submit" variant="primary" loading={scanning} className="px-4">
+                      Mark
+                    </Button>
+                  </form>
+                  <p className="text-xs text-muted mt-2">
+                    Focus the input field above and scan the barcode. The scanner will automatically submit the matric number.
+                  </p>
                 </div>
 
                 {/* Session code */}
-                <div className="text-center">
-                  <p className="text-xs text-muted mb-2">Or share this code manually</p>
+                <div className="text-center mt-2">
+                  <p className="text-xs text-muted mb-2">Manual Session Code</p>
                   <div className="flex items-center justify-center gap-3">
-                    <span className="text-3xl font-mono font-bold tracking-widest text-neon-green">
+                    <span className="text-2xl font-mono font-bold tracking-widest text-neon-green">
                       {activeSession.session_code}
                     </span>
                     <button
@@ -193,7 +227,7 @@ export default function StartSessionModal({ isOpen, onClose, defaultCourseId }: 
                       className="text-muted hover:text-neon-green transition-colors"
                       aria-label="Copy session code"
                     >
-                      {copied ? <Check size={18} className="text-neon-green" /> : <Copy size={18} />}
+                      {copied ? <Check size={16} className="text-neon-green" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>

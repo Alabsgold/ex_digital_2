@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+import warnings
 from datetime import datetime, timedelta, timezone
 from typing import List
 
@@ -16,6 +17,8 @@ from app.config import settings
 from app.database import get_db
 
 # ── Password hashing ──────────────────────────────────────────────────────────
+# Suppress passlib's noisy bcrypt version warning (passlib 1.7.4 + bcrypt 4.x).
+warnings.filterwarnings("ignore", ".*error reading bcrypt version.*")
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],

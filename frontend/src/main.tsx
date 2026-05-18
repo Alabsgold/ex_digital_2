@@ -8,27 +8,29 @@ import '@/index.css'
 import { ToastProvider } from '@/components/Toast'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
+import { Suspense, lazy } from 'react'
+
 // Public pages
-import LandingPage from '@/pages/LandingPage'
-import LoginPage from '@/pages/LoginPage'
-import RegisterPage from '@/pages/RegisterPage'
-import NotFoundPage from '@/pages/NotFoundPage'
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 // Student pages
-import StudentDashboard from '@/pages/StudentDashboard'
-import StudentAttendanceHistory from '@/pages/StudentAttendanceHistory'
-import SettingsPage from '@/pages/SettingsPage'
+const StudentDashboard = lazy(() => import('@/pages/StudentDashboard'))
+const StudentAttendanceHistory = lazy(() => import('@/pages/StudentAttendanceHistory'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 
 // Lecturer pages
-import LecturerDashboard from '@/pages/LecturerDashboard'
-import LecturerSessions from '@/pages/LecturerSessions'
-import LecturerCourses from '@/pages/LecturerCourses'
+const LecturerDashboard = lazy(() => import('@/pages/LecturerDashboard'))
+const LecturerSessions = lazy(() => import('@/pages/LecturerSessions'))
+const LecturerCourses = lazy(() => import('@/pages/LecturerCourses'))
 
 // Admin pages
-import AdminDashboard from '@/pages/AdminDashboard'
-import AdminUserManagement from '@/pages/AdminUserManagement'
-import AdminCourseManagement from '@/pages/AdminCourseManagement'
-import AdminERPSync from '@/pages/AdminERPSync'
+const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'))
+const AdminUserManagement = lazy(() => import('@/pages/AdminUserManagement'))
+const AdminCourseManagement = lazy(() => import('@/pages/AdminCourseManagement'))
+const AdminERPSync = lazy(() => import('@/pages/AdminERPSync'))
 
 // Add qrcode.react dep shim — needs to be installed separately
 // npm install qrcode.react
@@ -38,6 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <ToastProvider>
+        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-dark"><div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin"></div></div>}>
         <Routes>
           {/* ── Public ──────────────────────────────────────────── */}
           <Route path="/" element={<LandingPage />} />
@@ -105,6 +108,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           />
 
           {/* ── Admin ───────────────────────────────────────────── */}
+          <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>} />
           <Route
             path="/admin/dashboard"
             element={
@@ -149,6 +153,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           {/* ── 404 ─────────────────────────────────────────────── */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </Suspense>
       </ToastProvider>
     </BrowserRouter>
   </React.StrictMode>

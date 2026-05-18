@@ -82,11 +82,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {tab === 'email' ? (
               <Input
-                label="Email Address"
-                type="email"
+                label="Email or Username"
+                type="text"
                 value={loginValue}
                 onChange={(e) => { setLoginValue(e.target.value); setErrors((e) => ({ ...e, login: '' })) }}
-                placeholder="you@university.edu"
+                placeholder="you@university.edu or ex-admin"
                 error={errors.login}
                 required
                 autoComplete="email"
@@ -137,6 +137,16 @@ export default function LoginPage() {
                 Create Account
               </Link>
             </p>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => { setTab('email'); setLoginValue('ex-admin'); setPassword('Admin123') }}
+              className="text-xs text-muted hover:text-electric-cyan transition-colors"
+            >
+              Sign in as Admin
+            </button>
           </div>
         </div>
 

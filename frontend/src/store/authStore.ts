@@ -22,6 +22,7 @@ export interface RegisterData {
   matric_number?: string
   department?: string
   level?: string
+  role?: 'student' | 'lecturer'
 }
 
 interface AuthState {

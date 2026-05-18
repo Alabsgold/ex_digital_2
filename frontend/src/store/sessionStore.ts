@@ -35,6 +35,7 @@ interface SessionState {
   startSession: (courseId: string, durationMinutes: number, venue?: string) => Promise<Session>
   endSession: (sessionId: string) => Promise<void>
   fetchActiveSessions: () => Promise<void>
+  scanBarcode: (sessionId: string, matricNumber: string) => Promise<void>
   connectSSE: (sessionId: string) => void
   disconnectSSE: () => void
   setCurrentSession: (session: Session | null) => void
@@ -94,6 +95,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({ activeSessions: data, isLoading: false })
     } catch (err: any) {
       set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch sessions.' })
+    }
+  },
+
+  scanBarcode: async (sessionId: string, matricNumber: string) => {
+    try {
+      await apiClient.post('/attendance/barcode-scan', {
+        session_id: sessionId,
+        matric_number: matricNumber
+      })
+      // We don't need to manually update state here because SSE will broadcast the update
+      // and liveAttendees will update automatically
+    } catch (err: any) {
+      throw new Error(err.response?.data?.detail || 'Failed to mark attendance for this barcode.')
     }
   },
 

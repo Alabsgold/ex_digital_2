@@ -56,6 +56,7 @@ export default function RegisterPage() {
   const { success, error: toastError } = useToast()
 
   const [form, setForm] = useState({
+    role: 'student' as 'student' | 'lecturer',
     full_name: '',
     email: '',
     matric_number: '',
@@ -76,8 +77,8 @@ export default function RegisterPage() {
     const errs: Record<string, string> = {}
     if (!form.full_name || form.full_name.length < 3) errs.full_name = 'Full name must be at least 3 characters.'
     if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Enter a valid email address.'
-    if (form.matric_number && !/^[A-Z0-9]{5,20}$/.test(form.matric_number.toUpperCase()))
-      errs.matric_number = 'Matric number must be 5-20 uppercase letters/digits.'
+    if (form.matric_number && !/^[A-Za-z0-9\-/]{4,25}$/.test(form.matric_number))
+      errs.matric_number = 'Matric number must be 4–25 characters (letters, digits, / or -).'
     if (!form.password || form.password.length < 8) errs.password = 'Password must be at least 8 characters.'
     else if (!/[A-Z]/.test(form.password)) errs.password = 'Password must include an uppercase letter.'
     else if (!/[a-z]/.test(form.password)) errs.password = 'Password must include a lowercase letter.'
@@ -97,12 +98,13 @@ export default function RegisterPage() {
         email: form.email,
         password: form.password,
         full_name: form.full_name,
-        matric_number: form.matric_number.toUpperCase() || undefined,
+        matric_number: form.role === 'student' ? (form.matric_number.toUpperCase() || undefined) : undefined,
         department: form.department || undefined,
         level: form.level || undefined,
+        role: form.role,
       })
       success('Account created successfully! Welcome to EX-Digital.')
-      navigate('/student/dashboard')
+      navigate(`/${form.role}/dashboard`)
     } catch (err: any) {
       toastError(err.message || 'Registration failed.')
     } finally {
@@ -132,25 +134,49 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Role Selection */}
+          <div className="flex bg-dark p-1 rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => set('role', 'student')}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                form.role === 'student' ? 'bg-surface text-white-text shadow-sm' : 'text-muted hover:text-white-text'
+              }`}
+            >
+              Student
+            </button>
+            <button
+              type="button"
+              onClick={() => set('role', 'lecturer')}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                form.role === 'lecturer' ? 'bg-surface text-white-text shadow-sm' : 'text-muted hover:text-white-text'
+              }`}
+            >
+              Lecturer
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <Input
               label="Full Name"
               value={form.full_name}
               onChange={(e) => set('full_name', e.target.value)}
-              placeholder="e.g. Adebayo Okonkwo"
+              placeholder="e.g. Olanrewaju Gbolahan"
               error={errors.full_name}
               required
               autoComplete="name"
             />
 
-            <Input
-              label="Matric Number (optional)"
-              value={form.matric_number}
-              onChange={(e) => set('matric_number', e.target.value.toUpperCase())}
-              placeholder="e.g. CSC/19/0001"
-              error={errors.matric_number}
-              className="font-mono"
-            />
+            {form.role === 'student' && (
+              <Input
+                label="Matric Number (optional)"
+                value={form.matric_number}
+                onChange={(e) => set('matric_number', e.target.value.toUpperCase())}
+                placeholder="e.g. CSC/19/0001"
+                error={errors.matric_number}
+                className="font-mono"
+              />
+            )}
 
             <Input
               label="Email Address"
@@ -171,13 +197,15 @@ export default function RegisterPage() {
                 options={DEPARTMENTS}
                 placeholder="Select department"
               />
-              <Select
-                label="Level"
-                value={form.level}
-                onChange={(e) => set('level', e.target.value)}
-                options={LEVELS}
-                placeholder="Select level"
-              />
+              {form.role === 'student' && (
+                <Select
+                  label="Level"
+                  value={form.level}
+                  onChange={(e) => set('level', e.target.value)}
+                  options={LEVELS}
+                  placeholder="Select level"
+                />
+              )}
             </div>
 
             <div>

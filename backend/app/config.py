@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     BCRYPT_ROUNDS: int = 12
 
     # ─── Admin Seed ────────────────────────────────────────────────────────
-    DEFAULT_ADMIN_EMAIL: str = "admin@exdigital.local"
-    DEFAULT_ADMIN_PASSWORD: str = "Admin@123456"
+    DEFAULT_ADMIN_EMAIL: str = "ex-admin"
+    DEFAULT_ADMIN_PASSWORD: str = "Admin123"
     DEFAULT_ADMIN_NAME: str = "System Administrator"
 
     @field_validator("JWT_SECRET")
