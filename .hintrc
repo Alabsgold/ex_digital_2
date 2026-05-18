@@ -1,0 +1,11 @@
+{
+  "extends": [
+    "development"
+  ],
+  "hints": {
+    "compat-api/css": "off",
+    "axe/aria": "off",
+    "typescript-config/strict": "off",
+    "axe/forms": "off"
+  }
+}
