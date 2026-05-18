@@ -36,6 +36,7 @@ def _attendance_to_response(a: Attendance) -> AttendanceResponse:
         session_id=a.session_id,
         course_name=a.course.name if a.course else "",
         course_code=a.course.code if a.course else "",
+        level=a.course.level if a.course else "",
         student_name=a.student.full_name if a.student else "",
         student_matric=a.student.matric_number if a.student else None,
         status=a.status,

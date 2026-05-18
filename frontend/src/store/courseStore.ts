@@ -7,6 +7,7 @@ export interface Course {
   name: string
   description: string | null
   department: string
+  level: string
   lecturer_id: string | null
   lecturer: { id: string; full_name: string; email: string } | null
   is_active: boolean
@@ -27,6 +28,7 @@ export interface CourseCreate {
   name: string
   description?: string
   department: string
+  level: string
   lecturer_id?: string
 }
 
@@ -34,6 +36,7 @@ export interface CourseUpdate {
   name?: string
   description?: string
   department?: string
+  level?: string
   is_active?: boolean
 }
 
@@ -46,10 +49,13 @@ interface CourseState {
   isLoading: boolean
   error: string | null
   fetchCourses: (filters?: CourseFilters) => Promise<void>
+  fetchAvailableCourses: (filters?: CourseFilters) => Promise<void>
   fetchCourse: (id: string) => Promise<void>
+  fetchEnrolledStudents: (courseId: string) => Promise<any[]>
   createCourse: (data: CourseCreate) => Promise<Course>
   updateCourse: (id: string, data: CourseUpdate) => Promise<void>
   enrollStudents: (courseId: string, studentIds: string[]) => Promise<any>
+  selfEnroll: (courseId: string) => Promise<void>
   assignLecturer: (courseId: string, lecturerId: string) => Promise<void>
   clearError: () => void
 }
@@ -76,6 +82,30 @@ export const useCourseStore = create<CourseState>((set) => ({
       set({ courses: data.items, total: data.total, page: data.page, pages: data.pages, isLoading: false })
     } catch (err: any) {
       set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch courses.' })
+    }
+  },
+
+  fetchAvailableCourses: async (filters = {}) => {
+    set({ isLoading: true, error: null })
+    try {
+      const params = new URLSearchParams()
+      if (filters.department) params.set('department', filters.department)
+      if (filters.search) params.set('search', filters.search)
+      if (filters.page) params.set('page', String(filters.page))
+      if (filters.per_page) params.set('per_page', String(filters.per_page))
+      const { data } = await apiClient.get(`/courses/available?${params}`)
+      set({ courses: data.items, total: data.total, page: data.page, pages: data.pages, isLoading: false })
+    } catch (err: any) {
+      set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch available courses.' })
+    }
+  },
+
+  fetchEnrolledStudents: async (courseId: string) => {
+    try {
+      const { data } = await apiClient.get(`/courses/${courseId}/students`)
+      return data.students
+    } catch (err: any) {
+      throw new Error(err.response?.data?.detail || 'Failed to fetch enrolled students')
     }
   },
 
@@ -121,6 +151,14 @@ export const useCourseStore = create<CourseState>((set) => ({
   enrollStudents: async (courseId, studentIds) => {
     const { data } = await apiClient.post(`/courses/${courseId}/enroll`, { student_ids: studentIds })
     return data
+  },
+
+  selfEnroll: async (courseId) => {
+    try {
+      await apiClient.post(`/courses/${courseId}/self-enroll`)
+    } catch (err: any) {
+      throw new Error(err.response?.data?.detail || 'Failed to enroll in course.')
+    }
   },
 
   assignLecturer: async (courseId, lecturerId) => {

@@ -35,6 +35,7 @@ def _build_course_response(course: Course, enrollment_count: int = 0) -> CourseR
         name=course.name,
         description=course.description,
         department=course.department,
+        level=course.level,
         lecturer_id=course.lecturer_id,
         lecturer=LecturerInfo(
             id=course.lecturer.id,
@@ -45,6 +46,54 @@ def _build_course_response(course: Course, enrollment_count: int = 0) -> CourseR
         created_at=course.created_at,
         enrollment_count=enrollment_count,
     )
+
+
+# ── GET /courses/available ───────────────────────────────────────────────────
+
+@router.get("/available", response_model=PaginatedCourses)
+async def list_available_courses(
+    level: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(Course).options(selectinload(Course.lecturer)).where(Course.is_active == True)
+    
+    if current_user.role == "student":
+        # exclude enrolled
+        enrolled_course_ids = (
+            await db.execute(select(Enrollment.course_id).where(Enrollment.student_id == current_user.id, Enrollment.is_active == True))
+        ).scalars().all()
+        if enrolled_course_ids:
+            stmt = stmt.where(Course.id.not_in(enrolled_course_ids))
+        if current_user.level:
+            stmt = stmt.where(Course.level == current_user.level)
+    elif current_user.role == "lecturer":
+        # exclude claimed
+        stmt = stmt.where((Course.lecturer_id != current_user.id) | (Course.lecturer_id.is_(None)))
+
+    if level:
+        stmt = stmt.where(Course.level == level)
+    if department:
+        stmt = stmt.where(Course.department.ilike(f"%{department}%"))
+    if search:
+        stmt = stmt.where((Course.name.ilike(f"%{search}%")) | (Course.code.ilike(f"%{search}%")))
+
+    total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+    offset = (page - 1) * per_page
+
+    results = (await db.execute(stmt.offset(offset).limit(per_page))).scalars().all()
+
+    items = []
+    for course in results:
+        count = (await db.scalar(select(func.count(Enrollment.id)).where(Enrollment.course_id == course.id, Enrollment.is_active == True))) or 0
+        items.append(_build_course_response(course, count))
+
+    return PaginatedCourses(items=items, total=total, page=page, per_page=per_page, pages=pages)
 
 
 # ── GET /courses/ ─────────────────────────────────────────────────────────────
@@ -112,7 +161,7 @@ async def list_courses(
 @router.post("/", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
 async def create_course(
     data: CourseCreate,
-    current_user: User = Depends(require_admin_or_lecturer),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     existing = await db.scalar(select(Course).where(Course.code == data.code.upper()))
@@ -122,16 +171,13 @@ async def create_course(
             detail=f"A course with code '{data.code}' already exists.",
         )
 
-    lecturer_id = data.lecturer_id
-    if lecturer_id is None and current_user.role == "lecturer":
-        lecturer_id = current_user.id
-
     course = Course(
         code=data.code.upper(),
         name=data.name,
         description=data.description,
         department=data.department,
-        lecturer_id=lecturer_id,
+        level=data.level,
+        lecturer_id=data.lecturer_id,
     )
     db.add(course)
     await db.flush()
@@ -269,6 +315,75 @@ async def enroll_students(
     return EnrollStudentsResponse(
         enrolled=enrolled, already_enrolled=already_enrolled, failed=failed
     )
+
+
+# ── POST /courses/{id}/self-enroll ────────────────────────────────────────────
+
+@router.post("/{course_id}/self-enroll", response_model=MessageResponse)
+async def self_enroll_course(
+    course_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    course = await db.scalar(select(Course).where(Course.id == course_id))
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+
+    if current_user.role == "student":
+        existing = await db.scalar(select(Enrollment).where(Enrollment.student_id == current_user.id, Enrollment.course_id == course_id))
+        if existing:
+            if not existing.is_active:
+                existing.is_active = True
+                await db.flush()
+                return MessageResponse(message="Re-enrolled successfully.")
+            return MessageResponse(message="Already enrolled.")
+        db.add(Enrollment(student_id=current_user.id, course_id=course_id))
+        await db.flush()
+        return MessageResponse(message="Enrolled successfully.")
+
+    elif current_user.role == "lecturer":
+        if course.lecturer_id == current_user.id:
+            return MessageResponse(message="You are already teaching this course.")
+        course.lecturer_id = current_user.id
+        await db.flush()
+        return MessageResponse(message="Claimed course successfully.")
+
+    else:
+        raise HTTPException(status_code=403, detail="Admins cannot self-enroll.")
+
+
+# ── GET /courses/{id}/students ────────────────────────────────────────────────
+
+@router.get("/{course_id}/students", response_model=dict)
+async def get_enrolled_students(
+    course_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    course = await db.scalar(select(Course).where(Course.id == course_id))
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+
+    if current_user.role == "lecturer" and course.lecturer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not teach this course.")
+    
+    if current_user.role == "student":
+        raise HTTPException(status_code=403, detail="Students cannot view full enrollment lists.")
+
+    stmt = select(User).join(Enrollment).where(Enrollment.course_id == course_id, Enrollment.is_active == True, User.role == "student")
+    students = (await db.execute(stmt)).scalars().all()
+    
+    return {
+        "students": [
+            {
+                "id": str(s.id),
+                "full_name": s.full_name,
+                "matric_number": s.matric_number,
+                "email": s.email,
+                "level": s.level
+            } for s in students
+        ]
+    }
 
 
 # ── POST /courses/{id}/assign-lecturer ────────────────────────────────────────

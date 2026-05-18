@@ -18,18 +18,18 @@ export default function AdminCourseManagement() {
   const [createOpen, setCreateOpen] = useState(false)
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ code: '', name: '', description: '', department: '' })
+  const [form, setForm] = useState({ code: '', name: '', description: '', department: '', level: '100' })
 
   useEffect(() => { fetchCourses({ search }) }, [search])
 
   const handleCreate = async () => {
-    if (!form.code || !form.name || !form.department) { toastError('Code, name, and department are required.'); return }
+    if (!form.code || !form.name || !form.department || !form.level) { toastError('Code, name, level, and department are required.'); return }
     setLoading(true)
     try {
       await createCourse(form as CourseCreate)
       success(`Course ${form.code} created successfully.`)
       setCreateOpen(false)
-      setForm({ code: '', name: '', description: '', department: '' })
+      setForm({ code: '', name: '', description: '', department: '', level: '100' })
     } catch (err: any) {
       toastError(err.message)
     } finally {
@@ -72,6 +72,7 @@ export default function AdminCourseManagement() {
             { key: 'code', header: 'Code', render: (v) => <span className="font-mono text-electric-cyan text-sm">{v}</span> },
             { key: 'name', header: 'Course Name' },
             { key: 'department', header: 'Department', render: (v) => <span className="text-sm text-muted">{v}</span> },
+            { key: 'level', header: 'Level', render: (v) => <span className="badge badge-cyan">{v}</span> },
             { key: 'enrollment_count', header: 'Students', render: (v) => <span className="text-sm">{v}</span> },
             {
               key: 'is_active',
@@ -106,6 +107,7 @@ export default function AdminCourseManagement() {
         <div className="space-y-4">
           <Input label="Course Code" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="e.g. CSC301" required />
           <Input label="Course Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Data Structures" required />
+          <Input label="Level" value={form.level} onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))} placeholder="e.g. 100, 200" required />
           <Input label="Department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} placeholder="e.g. Computer Science" required />
           <Input label="Description (optional)" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Brief course description" />
           <div className="flex gap-3 pt-2">

@@ -133,6 +133,7 @@ class CourseCreate(BaseModel):
     name: str = Field(..., min_length=3, max_length=255)
     description: Optional[str] = None
     department: str = Field(..., min_length=2, max_length=100)
+    level: str = Field(..., min_length=2, max_length=10)
     lecturer_id: Optional[uuid.UUID] = None
 
 
@@ -140,6 +141,7 @@ class CourseUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=255)
     description: Optional[str] = None
     department: Optional[str] = Field(None, min_length=2, max_length=100)
+    level: Optional[str] = Field(None, min_length=2, max_length=10)
     is_active: Optional[bool] = None
 
 
@@ -157,6 +159,7 @@ class CourseResponse(BaseModel):
     name: str
     description: Optional[str] = None
     department: str
+    level: str
     lecturer_id: Optional[uuid.UUID] = None
     lecturer: Optional[LecturerInfo] = None
     is_active: bool
@@ -281,6 +284,7 @@ class AttendanceResponse(BaseModel):
     session_id: uuid.UUID
     course_name: str
     course_code: str
+    level: str
     student_name: str
     student_matric: Optional[str] = None
     status: str
