@@ -348,10 +348,10 @@ Interactive docs available at `/docs` when `DEBUG=true`.
 {
   "email": "student@university.edu",
   "password": "MyPass123",
-  "full_name": "Adebayo Okonkwo",
-  "matric_number": "CSC/19/0001",
+  "full_name": "Olanrewaju Gbolahan",
+  "matric_number": "2403030043",
   "department": "Computer Science",
-  "level": "300"
+  "level": "200"
 }
 ```
 Returns: `{ "access_token": "...", "token_type": "bearer", "user": { ... } }`
