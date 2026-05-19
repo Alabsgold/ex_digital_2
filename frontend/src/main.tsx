@@ -19,6 +19,7 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 // Student pages
 const StudentDashboard = lazy(() => import('@/pages/StudentDashboard'))
 const StudentAttendanceHistory = lazy(() => import('@/pages/StudentAttendanceHistory'))
+const StudentEnrollCourses = lazy(() => import('@/pages/StudentEnrollCourses'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 
 // Lecturer pages
@@ -61,6 +62,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             element={
               <ProtectedRoute roles={['student']}>
                 <StudentAttendanceHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/courses"
+            element={
+              <ProtectedRoute roles={['student']}>
+                <StudentEnrollCourses />
               </ProtectedRoute>
             }
           />

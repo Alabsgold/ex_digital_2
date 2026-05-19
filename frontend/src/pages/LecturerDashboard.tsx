@@ -55,10 +55,18 @@ export default function LecturerDashboard() {
         {/* Active sessions */}
         {activeSessions.length > 0 && (
           <div className="glass-card p-5">
-            <h2 className="section-title mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-              Active Sessions ({activeSessions.length})
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="section-title flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
+                Active Sessions ({activeSessions.length})
+              </h2>
+              <a
+                href="/lecturer/sessions"
+                className="text-xs text-electric-cyan hover:underline flex items-center gap-1"
+              >
+                Manage →
+              </a>
+            </div>
             <div className="grid md:grid-cols-2 gap-3">
               {activeSessions.map((s) => (
                 <div key={s.id} className="glass-card-active p-4 rounded-xl border border-neon-green/30">
@@ -80,6 +88,7 @@ export default function LecturerDashboard() {
             </div>
           </div>
         )}
+
 
         {/* My Courses */}
         <div className="glass-card p-5">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Users, PlusCircle, CheckCircle, Search } from 'lucide-react'
+import { BookOpen, PlusCircle, CheckCircle, Search } from 'lucide-react'
 import { useCourseStore } from '@/store/courseStore'
 import { useToast } from '@/components/Toast'
 import Layout from '@/components/Layout'
@@ -9,50 +9,49 @@ import Button from '@/components/Button'
 import SearchInput from '@/components/SearchInput'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type Tab = 'my' | 'available'
+type Tab = 'enrolled' | 'available'
 
-export default function LecturerCourses() {
+export default function StudentEnrollCourses() {
   const { courses, isLoading, fetchCourses, fetchAvailableCourses, selfEnroll } = useCourseStore()
   const { success, error: toastError } = useToast()
 
-  const [tab, setTab] = useState<Tab>('my')
+  const [tab, setTab] = useState<Tab>('enrolled')
   const [search, setSearch] = useState('')
-  const [claimingId, setClaimingId] = useState<string | null>(null)
+  const [enrollingId, setEnrollingId] = useState<string | null>(null)
 
-  // Load appropriate list whenever tab or search changes
   useEffect(() => {
-    if (tab === 'my') {
+    if (tab === 'enrolled') {
       fetchCourses({ search })
     } else {
       fetchAvailableCourses({ search })
     }
   }, [tab, search])
 
-  const handleClaim = async (courseId: string, courseName: string) => {
-    setClaimingId(courseId)
+  const handleEnroll = async (courseId: string, courseName: string) => {
+    setEnrollingId(courseId)
     try {
       await selfEnroll(courseId)
-      success(`You are now registered for "${courseName}".`)
-      // Refresh both views
+      success(`Enrolled in "${courseName}" successfully!`)
+      // Refresh available list (removes newly enrolled course)
       fetchAvailableCourses({ search })
     } catch (err: any) {
       toastError(err.message)
     } finally {
-      setClaimingId(null)
+      setEnrollingId(null)
     }
   }
 
   return (
     <Layout>
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="page-title">Courses</h1>
+        <div>
+          <h1 className="page-title">My Courses</h1>
+          <p className="text-sm text-muted mt-1">Enrol in courses available for your level to start tracking attendance.</p>
         </div>
 
         {/* Tab switcher */}
         <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          {([['my', 'My Courses', <BookOpen size={14} />], ['available', 'Browse Available', <Search size={14} />]] as const).map(([id, label, icon]) => (
+          {([['enrolled', 'My Enrolled Courses', <CheckCircle size={14} />], ['available', 'Browse & Enrol', <Search size={14} />]] as const).map(([id, label, icon]) => (
             <button
               key={id}
               onClick={() => { setTab(id as Tab); setSearch('') }}
@@ -67,23 +66,22 @@ export default function LecturerCourses() {
           ))}
         </div>
 
-        {/* Search */}
-        <SearchInput placeholder={tab === 'my' ? 'Search my courses…' : 'Search available courses…'} onChange={setSearch} />
+        <SearchInput placeholder={tab === 'enrolled' ? 'Search enrolled courses…' : 'Search available courses…'} onChange={setSearch} />
 
         <AnimatePresence mode="wait">
-          {tab === 'my' ? (
-            <motion.div key="my" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+          {tab === 'enrolled' ? (
+            <motion.div key="enrolled" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {isLoading ? (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="glass-card p-5 h-40 animate-pulse" style={{ background: 'rgba(255,255,255,0.03)' }} />
+                    <div key={i} className="glass-card p-5 h-36 animate-pulse" style={{ background: 'rgba(255,255,255,0.03)' }} />
                   ))}
                 </div>
               ) : courses.length === 0 ? (
                 <EmptyState
                   icon={<BookOpen size={32} />}
-                  title="No courses registered"
-                  description='Browse the "Browse Available" tab to register courses you are assigned to teach.'
+                  title="No enrolled courses"
+                  description='Switch to "Browse & Enrol" to register in courses available for your level.'
                 />
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -93,22 +91,21 @@ export default function LecturerCourses() {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.06 }}
-                      className="glass-card glass-card-hover p-5"
+                      className="glass-card p-5"
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-xs font-mono text-electric-cyan mb-1">{c.code}</p>
-                          <h3 className="font-semibold text-white-text leading-snug">{c.name}</h3>
+                          <h3 className="font-semibold text-white-text text-sm leading-snug">{c.name}</h3>
                           <p className="text-xs text-muted mt-1">{c.department}</p>
                         </div>
-                        <span className="badge badge-green flex-shrink-0 ml-2">
-                          <CheckCircle size={10} className="inline mr-1" />Level {c.level}
+                        <span className="badge badge-green ml-2 flex-shrink-0">
+                          <CheckCircle size={10} className="inline mr-1" />Enrolled
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted border-t border-white/[0.06] pt-3 mt-3">
-                        <Users size={12} />
-                        <span>{c.enrollment_count} students enrolled</span>
-                      </div>
+                      {c.lecturer && (
+                        <p className="text-xs text-muted mt-2">Lecturer: <span className="text-white-text">{c.lecturer.full_name}</span></p>
+                      )}
                     </motion.div>
                   ))}
                 </div>
@@ -126,7 +123,7 @@ export default function LecturerCourses() {
                 <EmptyState
                   icon={<Search size={32} />}
                   title="No available courses"
-                  description="All courses in the department have been claimed, or the admin has not uploaded any yet."
+                  description="You are already enrolled in all courses for your level, or the admin hasn't uploaded courses yet."
                 />
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -143,15 +140,17 @@ export default function LecturerCourses() {
                           <p className="text-xs font-mono text-electric-cyan">{c.code}</p>
                           <span className="badge badge-cyan">Level {c.level}</span>
                         </div>
-                        <h3 className="font-semibold text-white-text leading-snug">{c.name}</h3>
+                        <h3 className="font-semibold text-white-text text-sm leading-snug">{c.name}</h3>
                         <p className="text-xs text-muted mt-1">{c.department}</p>
                         {c.description && (
                           <p className="text-xs text-muted mt-2 line-clamp-2">{c.description}</p>
                         )}
-                        {c.lecturer && (
-                          <p className="text-xs mt-2" style={{ color: 'rgba(255,180,68,0.8)' }}>
-                            Currently: {c.lecturer.full_name}
+                        {c.lecturer ? (
+                          <p className="text-xs mt-2 text-muted">
+                            Lecturer: <span className="text-white-text">{c.lecturer.full_name}</span>
                           </p>
+                        ) : (
+                          <p className="text-xs mt-2 italic text-muted">No lecturer assigned yet</p>
                         )}
                       </div>
                       <Button
@@ -159,10 +158,10 @@ export default function LecturerCourses() {
                         size="sm"
                         fullWidth
                         leftIcon={<PlusCircle size={13} />}
-                        loading={claimingId === c.id}
-                        onClick={() => handleClaim(c.id, c.name)}
+                        loading={enrollingId === c.id}
+                        onClick={() => handleEnroll(c.id, c.name)}
                       >
-                        Register Course
+                        Enrol Now
                       </Button>
                     </motion.div>
                   ))}

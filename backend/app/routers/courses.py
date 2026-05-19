@@ -72,8 +72,8 @@ async def list_available_courses(
         if current_user.level:
             stmt = stmt.where(Course.level == current_user.level)
     elif current_user.role == "lecturer":
-        # exclude claimed
-        stmt = stmt.where((Course.lecturer_id != current_user.id) | (Course.lecturer_id.is_(None)))
+        # Only show unassigned courses (not yet claimed by any lecturer, and not already mine)
+        stmt = stmt.where(Course.lecturer_id.is_(None))
 
     if level:
         stmt = stmt.where(Course.level == level)

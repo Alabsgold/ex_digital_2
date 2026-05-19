@@ -32,7 +32,8 @@ function getNavItems(role: string): NavItem[] {
   ]
   return [
     { label: 'Dashboard', path: '/student/dashboard', icon: <LayoutDashboard size={20} /> },
-    { label: 'My History', path: '/student/history', icon: <History size={20} /> },
+    { label: 'My Courses', path: '/student/courses', icon: <BookOpen size={20} /> },
+    { label: 'Attendance', path: '/student/history', icon: <History size={20} /> },
     { label: 'Settings', path: '/student/settings', icon: <Settings size={20} /> },
   ]
 }
