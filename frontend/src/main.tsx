@@ -14,6 +14,7 @@ import { Suspense, lazy } from 'react'
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
+const AdminLogin = lazy(() => import('@/pages/AdminLogin'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 // Student pages
@@ -47,6 +48,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/admin/admin_ex_digital" element={<AdminLogin />} />
 
           {/* ── Student ─────────────────────────────────────────── */}
           <Route

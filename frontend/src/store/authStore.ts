@@ -22,7 +22,7 @@ export interface RegisterData {
   matric_number?: string
   department?: string
   level?: string
-  role?: 'student' | 'lecturer'
+  role?: 'student'
 }
 
 interface AuthState {
@@ -32,6 +32,7 @@ interface AuthState {
   isLoading: boolean
   error: string | null
   login: (login: string, password: string) => Promise<void>
+  adminLogin: (login: string, password: string) => Promise<void>
   register: (data: RegisterData) => Promise<void>
   logout: () => void
   fetchProfile: () => Promise<void>
@@ -63,6 +64,23 @@ export const useAuthStore = create<AuthState>()(
           })
         } catch (err: any) {
           const message = err.response?.data?.detail || 'Login failed. Please try again.'
+          set({ isLoading: false, error: message })
+          throw new Error(message)
+        }
+      },
+
+      adminLogin: async (login: string, password: string) => {
+        set({ isLoading: true, error: null })
+        try {
+          const { data } = await apiClient.post('/auth/admin-login', { login, password })
+          set({
+            user: data.user,
+            token: data.access_token,
+            isAuthenticated: true,
+            isLoading: false,
+          })
+        } catch (err: any) {
+          const message = err.response?.data?.detail || 'Admin login failed.'
           set({ isLoading: false, error: message })
           throw new Error(message)
         }

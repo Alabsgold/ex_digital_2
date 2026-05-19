@@ -56,7 +56,7 @@ export default function RegisterPage() {
   const { success, error: toastError } = useToast()
 
   const [form, setForm] = useState({
-    role: 'student' as 'student' | 'lecturer',
+    role: 'student' as 'student',
     full_name: '',
     email: '',
     matric_number: '',
@@ -98,10 +98,10 @@ export default function RegisterPage() {
         email: form.email,
         password: form.password,
         full_name: form.full_name,
-        matric_number: form.role === 'student' ? (form.matric_number.toUpperCase() || undefined) : undefined,
+        matric_number: form.matric_number ? form.matric_number.toUpperCase() : undefined,
         department: form.department || undefined,
         level: form.level || undefined,
-        role: form.role,
+        role: 'student',
       })
       success('Account created successfully! Welcome to EX-Digital.')
       navigate(`/${form.role}/dashboard`)
@@ -134,26 +134,10 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Role Selection */}
-          <div className="flex bg-dark p-1 rounded-xl mb-6">
-            <button
-              type="button"
-              onClick={() => set('role', 'student')}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                form.role === 'student' ? 'bg-surface text-white-text shadow-sm' : 'text-muted hover:text-white-text'
-              }`}
-            >
-              Student
-            </button>
-            <button
-              type="button"
-              onClick={() => set('role', 'lecturer')}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                form.role === 'lecturer' ? 'bg-surface text-white-text shadow-sm' : 'text-muted hover:text-white-text'
-              }`}
-            >
-              Lecturer
-            </button>
+          {/* Role Selection Removed - Only Students can register */}
+          <div className="bg-surface/50 p-3 rounded-xl mb-6 border border-white/[0.05] text-center">
+            <p className="text-sm font-medium text-electric-cyan">Student Registration</p>
+            <p className="text-xs text-muted mt-1">Lecturers must contact the administrator for an account.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -167,16 +151,14 @@ export default function RegisterPage() {
               autoComplete="name"
             />
 
-            {form.role === 'student' && (
-              <Input
-                label="Matric Number (optional)"
-                value={form.matric_number}
-                onChange={(e) => set('matric_number', e.target.value.toUpperCase())}
-                placeholder="e.g. CSC/19/0001"
-                error={errors.matric_number}
-                className="font-mono"
-              />
-            )}
+            <Input
+              label="Matric Number (optional)"
+              value={form.matric_number}
+              onChange={(e) => set('matric_number', e.target.value.toUpperCase())}
+              placeholder="e.g. CSC/19/0001"
+              error={errors.matric_number}
+              className="font-mono"
+            />
 
             <Input
               label="Email Address"
@@ -197,15 +179,13 @@ export default function RegisterPage() {
                 options={DEPARTMENTS}
                 placeholder="Select department"
               />
-              {form.role === 'student' && (
-                <Select
-                  label="Level"
-                  value={form.level}
-                  onChange={(e) => set('level', e.target.value)}
-                  options={LEVELS}
-                  placeholder="Select level"
-                />
-              )}
+              <Select
+                label="Level"
+                value={form.level}
+                onChange={(e) => set('level', e.target.value)}
+                options={LEVELS}
+                placeholder="Select level"
+              />
             </div>
 
             <div>

@@ -63,6 +63,13 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
             detail="An account with this email already exists.",
         )
 
+    # Security: Public registration is only for students
+    if data.role != "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only student accounts can be created via public registration. Lecturers must be added by an admin.",
+        )
+
     # Check duplicate matric
     if data.matric_number:
         existing_matric = await db.scalar(
@@ -113,6 +120,12 @@ async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends
             detail="Invalid credentials. Please check your login and password.",
         )
 
+    if user.role == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin login is restricted to the secure admin portal.",
+        )
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -120,6 +133,48 @@ async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends
         )
 
     # Update last login
+    user.last_login = datetime.now(timezone.utc)
+    await db.flush()
+
+    token = create_access_token({"sub": str(user.id), "role": user.role})
+    return TokenResponse(access_token=token, user=_user_to_response(user))
+
+
+# ── POST /auth/admin-login ────────────────────────────────────────────────────
+
+@router.post("/admin-login", response_model=TokenResponse)
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def admin_login(request: Request, data: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """Dedicated login for administrators only."""
+    login_value = data.login.strip()
+
+    user = await db.scalar(
+        select(User).where(
+            or_(
+                User.email == login_value.lower(),
+                User.matric_number == login_value.upper()
+            )
+        )
+    )
+
+    if not user or not verify_password(data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials.",
+        )
+
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. This portal is strictly for administrators.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your admin account has been deactivated.",
+        )
+
     user.last_login = datetime.now(timezone.utc)
     await db.flush()
 
