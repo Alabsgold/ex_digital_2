@@ -11,6 +11,9 @@ import HelpOverlay from '@/components/HelpOverlay'
 import { StatusBadge } from '@/components/Badge'
 import { countPending } from '@/lib/offlineQueue'
 import { useNetworkStatus } from '@/lib/useNetworkStatus'
+import Input from '@/components/Input'
+import Button from '@/components/Button'
+import { useToast } from '@/components/Toast'
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -23,6 +26,10 @@ export default function StudentDashboard() {
   const { isOnline } = useNetworkStatus()
   const [pendingCount, setPendingCount] = useState(0)
   const navigate = useNavigate()
+  const { success, error: toastError } = useToast()
+
+  const [sessionCode, setSessionCode] = useState('')
+  const [submittingCode, setSubmittingCode] = useState(false)
 
   useEffect(() => {
     fetchStats()
@@ -44,6 +51,29 @@ export default function StudentDashboard() {
   })()
 
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!sessionCode) return
+    setSubmittingCode(true)
+    try {
+      const resp = await useAttendanceStore.getState().submitSessionCode(sessionCode)
+      if (resp.marked > 0) {
+        success('Attendance marked successfully!')
+      } else if (resp.already_marked > 0) {
+        toastError('You have already marked attendance for this session.')
+      } else {
+        toastError(resp.results[0]?.message || 'Failed to mark attendance.')
+      }
+      setSessionCode('')
+      fetchStats()
+      fetchMyAttendance({ per_page: 7 })
+    } catch (err: any) {
+      toastError(err.message || 'Failed to submit code.')
+    } finally {
+      setSubmittingCode(false)
+    }
+  }
 
   return (
     <Layout>
@@ -129,9 +159,31 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          {/* Recent Attendance */}
-          <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-4">
+          <div className="space-y-6">
+            {/* Enter Session Code */}
+            <div className="glass-card p-5">
+              <h2 className="section-title mb-4">Mark Attendance</h2>
+              <p className="text-xs text-muted mb-4">
+                Enter the session code provided by your lecturer to mark yourself present.
+              </p>
+              <form onSubmit={handleCodeSubmit} className="flex gap-2">
+                <Input 
+                  label=""
+                  placeholder="Enter 6-digit code"
+                  value={sessionCode}
+                  onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                  className="flex-1 font-mono tracking-wider"
+                  required
+                />
+                <Button type="submit" variant="primary" loading={submittingCode}>
+                  Submit
+                </Button>
+              </form>
+            </div>
+
+            {/* Recent Attendance */}
+            <div className="glass-card p-5">
+              <div className="flex items-center justify-between mb-4">
               <h2 className="section-title">Recent Attendance</h2>
               <button
                 onClick={() => navigate('/student/history')}
@@ -161,6 +213,7 @@ export default function StudentDashboard() {
                 ))}
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>

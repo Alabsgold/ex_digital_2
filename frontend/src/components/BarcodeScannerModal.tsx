@@ -72,17 +72,7 @@ function classifyError(err: any): { kind: RejectionKind; message: string } {
 
 const SCAN_CONTAINER_ID = 'lect-bc-reader'
 
-/**
- * Only Code-128 and QR — the two formats used on Nigerian university ID cards.
- * Using fewer formats is the #1 speed improvement (5-10× faster per frame).
- * Add CODE_39 if your institution uses it.
- */
-const FORMATS = [
-  Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.QR_CODE,
-  Html5QrcodeSupportedFormats.CODE_39,
-  Html5QrcodeSupportedFormats.EAN_13,
-]
+// ── Config removed formats restriction for maximum compatibility ──
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -132,16 +122,15 @@ export default function BarcodeScannerModal({
 
     try {
       const scanner = new Html5Qrcode(SCAN_CONTAINER_ID, {
-        formatsToSupport: FORMATS,
         verbose: false,
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true }, // native API = 3-5× faster
+        experimentalFeatures: { useBarCodeDetectorIfSupported: false }, // native API can cause silent failures on some devices
       })
       scannerRef.current = scanner
 
       await scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 25,                              // high fps — each frame is cheap (few formats + native API)
+          fps: 10,                              // lower fps is safer and doesn't overload older phones
           qrbox: { width: 280, height: 100 },  // wide, short = barcode shape
           aspectRatio: 1.777,                   // 16:9 = full landscape phone sensor
           disableFlip: false,

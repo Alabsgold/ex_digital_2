@@ -49,6 +49,7 @@ interface AttendanceState {
   error: string | null
   fetchMyAttendance: (filters?: AttendanceFilters) => Promise<void>
   fetchStats: () => Promise<void>
+  submitSessionCode: (sessionCode: string) => Promise<any>
   clearError: () => void
 }
 
@@ -91,6 +92,23 @@ export const useAttendanceStore = create<AttendanceState>((set) => ({
       set({ stats: data, isLoading: false })
     } catch (err: any) {
       set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch stats.' })
+    }
+  },
+
+  submitSessionCode: async (sessionCode: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const { data } = await apiClient.post('/attendance/rapid-scan', {
+        scans: [{
+          session_code: sessionCode,
+          timestamp: new Date().toISOString()
+        }]
+      })
+      set({ isLoading: false })
+      return data
+    } catch (err: any) {
+      set({ isLoading: false, error: err.response?.data?.detail || 'Failed to submit code.' })
+      throw err
     }
   },
 

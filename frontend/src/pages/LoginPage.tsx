@@ -139,15 +139,7 @@ export default function LoginPage() {
             </p>
           </div>
           
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => { setTab('email'); setLoginValue('ex-admin'); setPassword('Admin123') }}
-              className="text-xs text-muted hover:text-electric-cyan transition-colors"
-            >
-              Sign in as Admin
-            </button>
-          </div>
+
         </div>
 
         <p className="text-center text-xs text-muted mt-6">

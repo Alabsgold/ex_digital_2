@@ -9,6 +9,9 @@ import BarcodeScannerModal from '@/components/BarcodeScannerModal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/components/Toast'
 import Button from '@/components/Button'
+import Modal from '@/components/Modal'
+import Input from '@/components/Input'
+import { Edit3 } from 'lucide-react'
 
 function SessionCountdown({ startedAt, durationMinutes }: { startedAt: string; durationMinutes: number }) {
   const [remaining, setRemaining] = useState(0)
@@ -63,9 +66,10 @@ interface ActiveSessionCardProps {
   session: Session
   onEnd: (session: Session) => void
   onScan: (session: Session) => void
+  onManualEntry: (session: Session) => void
 }
 
-function ActiveSessionCard({ session, onEnd, onScan }: ActiveSessionCardProps) {
+function ActiveSessionCard({ session, onEnd, onScan, onManualEntry }: ActiveSessionCardProps) {
   return (
     <motion.div
       layout
@@ -112,12 +116,22 @@ function ActiveSessionCard({ session, onEnd, onScan }: ActiveSessionCardProps) {
           leftIcon={<Camera size={14} />}
           onClick={() => onScan(session)}
         >
-          Scan ID Card
+          Scan ID
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          fullWidth
+          leftIcon={<Edit3 size={14} />}
+          onClick={() => onManualEntry(session)}
+        >
+          Roll Call
         </Button>
         <Button
           variant="danger"
           size="sm"
           fullWidth
+          className="col-span-2"
           leftIcon={<StopCircle size={14} />}
           onClick={() => onEnd(session)}
         >
@@ -135,6 +149,9 @@ export default function LecturerSessions() {
   const [startModalOpen, setStartModalOpen] = useState(false)
   const [endTarget, setEndTarget] = useState<Session | null>(null)
   const [scanTarget, setScanTarget] = useState<Session | null>(null)
+  const [manualTarget, setManualTarget] = useState<Session | null>(null)
+  const [manualMatric, setManualMatric] = useState('')
+  const [manualLoading, setManualLoading] = useState(false)
   const [ending, setEnding] = useState(false)
 
   // Fetch active sessions on mount and poll every 15 s
@@ -155,6 +172,21 @@ export default function LecturerSessions() {
       toastError(err.message)
     } finally {
       setEnding(false)
+    }
+  }
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!manualTarget || !manualMatric) return
+    setManualLoading(true)
+    try {
+      const resp = await useSessionStore.getState().scanBarcode(manualTarget.id, manualMatric)
+      success(`Attendance marked for ${resp.student_name || manualMatric}`)
+      setManualMatric('') // clear for next student
+    } catch (err: any) {
+      toastError(err.message || 'Failed to mark attendance')
+    } finally {
+      setManualLoading(false)
     }
   }
 
@@ -207,6 +239,7 @@ export default function LecturerSessions() {
                   session={s}
                   onEnd={(sess) => setEndTarget(sess)}
                   onScan={(sess) => setScanTarget(sess)}
+                  onManualEntry={(sess) => setManualTarget(sess)}
                 />
               ))}
             </div>
@@ -239,6 +272,23 @@ export default function LecturerSessions() {
           courseName={scanTarget.course_name}
         />
       )}
+
+      {/* Manual Entry Modal */}
+      <Modal isOpen={!!manualTarget} onClose={() => setManualTarget(null)} title="Manual Roll Call" size="sm">
+        <form onSubmit={handleManualSubmit} className="space-y-4">
+          <Input 
+            label="Student Matric Number" 
+            placeholder="e.g. CSC/19/0001" 
+            value={manualMatric}
+            onChange={(e) => setManualMatric(e.target.value.toUpperCase())}
+            required
+            autoFocus
+          />
+          <Button type="submit" variant="primary" fullWidth loading={manualLoading}>
+            Mark Present
+          </Button>
+        </form>
+      </Modal>
 
       {/* End session confirm */}
       <ConfirmModal

@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast'
 import type { User } from '@/store/authStore'
 
 export default function AdminUserManagement() {
-  const { users, usersPagination, isLoading, fetchUsers, updateUser, deactivateUser, reactivateUser, bulkImportUsers } = useAdminStore()
+  const { users, usersPagination, isLoading, fetchUsers, updateUser, createUser, deactivateUser, reactivateUser, bulkImportUsers } = useAdminStore()
   const { success, error: toastError } = useToast()
 
   const [search, setSearch] = useState('')
@@ -29,6 +29,35 @@ export default function AdminUserManagement() {
 
   const load = (page = 1) => fetchUsers({ search, role: roleFilter, page })
   useEffect(() => { load() }, [search, roleFilter, statusFilter])
+
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createForm, setCreateForm] = useState({ full_name: '', email: '', role: 'lecturer' as 'admin'|'lecturer'|'student', department: '', level: '', password: '' })
+
+  const handleCreateSubmit = async () => {
+    if (!createForm.password || createForm.password.length < 8) {
+      toastError('Please assign a password (at least 8 characters).')
+      return
+    }
+    setCreateLoading(true)
+    try {
+      await createUser({
+        full_name: createForm.full_name,
+        email: createForm.email,
+        role: createForm.role,
+        department: createForm.department || undefined,
+        level: createForm.level || undefined,
+        password: createForm.password,
+      })
+      success('User created successfully.')
+      setCreateModalOpen(false)
+      setCreateForm({ full_name: '', email: '', role: 'lecturer', department: '', level: '', password: '' })
+    } catch (err: any) {
+      toastError(err.message)
+    } finally {
+      setCreateLoading(false)
+    }
+  }
 
   const openEdit = (u: User) => {
     setEditUser(u)
@@ -94,6 +123,9 @@ export default function AdminUserManagement() {
         <div className="flex items-center justify-between">
           <h1 className="page-title">User Management</h1>
           <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => setCreateModalOpen(true)} leftIcon={<UserPlus size={14} />}>
+              Add User
+            </Button>
             <Button variant="secondary" size="sm" onClick={handleImport} loading={importLoading} leftIcon={<Upload size={14} />}>
               Import CSV
             </Button>
@@ -152,6 +184,28 @@ export default function AdminUserManagement() {
           ]}
         />
       </div>
+
+      {/* Create User Modal */}
+      <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Add New User" size="md">
+        <div className="space-y-4">
+          <Input label="Full Name" value={createForm.full_name} onChange={(e) => setCreateForm((f) => ({ ...f, full_name: e.target.value }))} required />
+          <Input label="Email" type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} required />
+          <Select label="Role" value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value as any }))}
+            options={[{ value: 'student', label: 'Student' }, { value: 'lecturer', label: 'Lecturer' }, { value: 'admin', label: 'Admin' }]} required />
+          
+          <Input label="Department (Optional)" value={createForm.department} onChange={(e) => setCreateForm((f) => ({ ...f, department: e.target.value }))} />
+          {createForm.role === 'student' && (
+            <Input label="Level (Optional)" value={createForm.level} onChange={(e) => setCreateForm((f) => ({ ...f, level: e.target.value }))} />
+          )}
+          
+          <Input label="Temporary Password" type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} showPasswordToggle required />
+          
+          <div className="flex gap-3 pt-2">
+            <Button variant="ghost" fullWidth onClick={() => setCreateModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" fullWidth onClick={handleCreateSubmit} loading={createLoading}>Create User</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Edit User Modal */}
       <Modal isOpen={!!editUser} onClose={() => setEditUser(null)} title="Edit User" size="md">

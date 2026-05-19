@@ -18,6 +18,7 @@ from app.schemas import (
     PaginatedUsers,
     SystemHealth,
     UserResponse,
+    UserCreate,
     UserUpdate,
 )
 from app.utils.security import get_current_user, hash_password, require_admin
@@ -198,6 +199,38 @@ async def list_users(
         per_page=per_page,
         pages=pages,
     )
+
+
+# ── POST /admin/users ─────────────────────────────────────────────────────────
+
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    data: __import__('app.schemas').schemas.UserCreate if not 'UserCreate' in globals() else UserCreate,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin-only: explicitly create a user (e.g. a lecturer)."""
+    existing = await db.scalar(select(User).where(User.email == data.email.lower()))
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
+    if data.matric_number:
+        existing_matric = await db.scalar(select(User).where(User.matric_number == data.matric_number.upper()))
+        if existing_matric:
+            raise HTTPException(status_code=409, detail="Matric number already exists.")
+
+    user = User(
+        email=data.email.lower(),
+        full_name=data.full_name,
+        hashed_password=hash_password(data.password),
+        role=data.role,
+        matric_number=data.matric_number.upper() if data.matric_number else None,
+        department=data.department,
+        level=data.level,
+    )
+    db.add(user)
+    await db.flush()
+    return _user_to_response(user)
 
 
 # ── PATCH /admin/users/{id} ───────────────────────────────────────────────────

@@ -61,6 +61,7 @@ interface AdminState {
   error: string | null
   fetchDashboardStats: () => Promise<void>
   fetchUsers: (filters?: UserFilters) => Promise<void>
+  createUser: (data: UserCreate) => Promise<void>
   updateUser: (id: string, data: UserUpdate) => Promise<void>
   deactivateUser: (id: string) => Promise<void>
   reactivateUser: (id: string) => Promise<void>
@@ -104,6 +105,12 @@ export const useAdminStore = create<AdminState>((set) => ({
     } catch (err: any) {
       set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch users.' })
     }
+  },
+
+  createUser: async (userData) => {
+    const { data } = await apiClient.post('/admin/users', userData)
+    // Add the new user to the beginning of the list
+    set((state) => ({ users: [data, ...state.users] }))
   },
 
   updateUser: async (id, userData) => {
