@@ -6,7 +6,7 @@ import warnings
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -73,6 +73,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 # ── Current user dependency ───────────────────────────────────────────────────
 
 async def get_current_user(
+    request: Request,
     token: str | None = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
@@ -80,6 +81,9 @@ async def get_current_user(
     from app.models import RevokedToken, User  # local import to avoid circular
 
     if token is None:
+        token = request.query_params.get("token")
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",

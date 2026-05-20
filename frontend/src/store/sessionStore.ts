@@ -36,7 +36,7 @@ interface SessionState {
   endSession: (sessionId: string) => Promise<void>
   fetchActiveSessions: () => Promise<void>
   scanBarcode: (sessionId: string, matricNumber: string) => Promise<any>
-  connectSSE: (sessionId: string) => void
+  connectSSE: (sessionId: string) => Promise<void>
   disconnectSSE: () => void
   setCurrentSession: (session: Session | null) => void
   clearError: () => void
@@ -111,15 +111,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  connectSSE: (sessionId) => {
+  connectSSE: async (sessionId) => {
     const existing = get().sseSource
     if (existing) existing.close()
+
+    // Fetch previously marked attendees
+    try {
+      const { data } = await apiClient.get(`/sessions/${sessionId}/attendees?per_page=100`)
+      set({ liveAttendees: data.items })
+    } catch {
+      set({ liveAttendees: [] })
+    }
 
     const token = localStorage.getItem('ex-digital-auth')
       ? JSON.parse(localStorage.getItem('ex-digital-auth')!).state?.token
       : null
 
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/sessions/${sessionId}/attendees/stream`
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/sessions/${sessionId}/attendees/stream?token=${token}`
     const source = new EventSource(url)
 
     source.addEventListener('attendee', (e) => {
@@ -133,7 +141,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       // Auto-reconnect handled by browser
     }
 
-    set({ sseSource: source, liveAttendees: [] })
+    set({ sseSource: source })
   },
 
   disconnectSSE: () => {

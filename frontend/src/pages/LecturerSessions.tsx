@@ -6,11 +6,11 @@ import Layout from '@/components/Layout'
 import HelpOverlay from '@/components/HelpOverlay'
 import StartSessionModal from '@/components/StartSessionModal'
 import BarcodeScannerModal from '@/components/BarcodeScannerModal'
+import RollCallModal from '@/components/RollCallModal'
+import LiveAttendeesStream from '@/components/LiveAttendeesStream'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/components/Toast'
 import Button from '@/components/Button'
-import Modal from '@/components/Modal'
-import Input from '@/components/Input'
 import { Edit3 } from 'lucide-react'
 
 function SessionCountdown({ startedAt, durationMinutes }: { startedAt: string; durationMinutes: number }) {
@@ -138,6 +138,10 @@ function ActiveSessionCard({ session, onEnd, onScan, onManualEntry }: ActiveSess
           End Session
         </Button>
       </div>
+
+      <div className="mt-4 pt-4 border-t border-white/[0.05]">
+        <LiveAttendeesStream sessionId={session.id} />
+      </div>
     </motion.div>
   )
 }
@@ -150,8 +154,6 @@ export default function LecturerSessions() {
   const [endTarget, setEndTarget] = useState<Session | null>(null)
   const [scanTarget, setScanTarget] = useState<Session | null>(null)
   const [manualTarget, setManualTarget] = useState<Session | null>(null)
-  const [manualMatric, setManualMatric] = useState('')
-  const [manualLoading, setManualLoading] = useState(false)
   const [ending, setEnding] = useState(false)
 
   // Fetch active sessions on mount and poll every 15 s
@@ -172,21 +174,6 @@ export default function LecturerSessions() {
       toastError(err.message)
     } finally {
       setEnding(false)
-    }
-  }
-
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!manualTarget || !manualMatric) return
-    setManualLoading(true)
-    try {
-      const resp = await useSessionStore.getState().scanBarcode(manualTarget.id, manualMatric)
-      success(`Attendance marked for ${resp.student_name || manualMatric}`)
-      setManualMatric('') // clear for next student
-    } catch (err: any) {
-      toastError(err.message || 'Failed to mark attendance')
-    } finally {
-      setManualLoading(false)
     }
   }
 
@@ -273,22 +260,16 @@ export default function LecturerSessions() {
         />
       )}
 
-      {/* Manual Entry Modal */}
-      <Modal isOpen={!!manualTarget} onClose={() => setManualTarget(null)} title="Manual Roll Call" size="sm">
-        <form onSubmit={handleManualSubmit} className="space-y-4">
-          <Input 
-            label="Student Matric Number" 
-            placeholder="e.g. CSC/19/0001" 
-            value={manualMatric}
-            onChange={(e) => setManualMatric(e.target.value.toUpperCase())}
-            required
-            autoFocus
-          />
-          <Button type="submit" variant="primary" fullWidth loading={manualLoading}>
-            Mark Present
-          </Button>
-        </form>
-      </Modal>
+      {/* Roll Call Modal */}
+      {manualTarget && (
+        <RollCallModal
+          isOpen={!!manualTarget}
+          onClose={() => setManualTarget(null)}
+          sessionId={manualTarget.id}
+          courseId={manualTarget.course_id}
+          courseName={manualTarget.course_name}
+        />
+      )}
 
       {/* End session confirm */}
       <ConfirmModal
