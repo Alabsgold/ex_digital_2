@@ -56,6 +56,7 @@ Backend → PostgreSQL (persistent data)
 - **User Management** — Create, edit, deactivate users; bulk CSV/Excel import
 - **Course Management** — Create, archive, assign lecturers, enroll students
 - **ERP Sync** — Sync pending students from the university ERP
+- **Global Attendance Ledger** — View every attendance record across the university, filter by course/date/status, and export to CSV
 - **Dashboard** — System stats: total users, active sessions, attendance trends, department breakdown
 - **System Health** — DB + Redis connectivity monitoring
 
@@ -72,6 +73,7 @@ Backend → PostgreSQL (persistent data)
 - **Live Attendance Stream** — Real-time SSE feed shows students as they mark attendance
   - Pre-loads all previously-marked students on connect
   - Shows name, matric number, time, and status (present / late)
+- **Reporting & Export** — View a 7-day attendance trend chart and instantly export course attendance data to CSV for offline analysis
 - **End Session** — Confirmed end stops all further attendance submissions
 
 ### 🎒 Student Features
@@ -107,6 +109,7 @@ Backend → PostgreSQL (persistent data)
 | GET | `/courses/{id}/students` | List enrolled students (Admin/Lecturer) |
 | POST | `/courses/{id}/assign-lecturer` | Assign lecturer (Admin) |
 | GET | `/courses/{id}/attendance/stats` | Course attendance statistics |
+| GET | `/courses/{id}/attendance/export` | Stream full course attendance as CSV |
 
 ### Sessions (`/sessions`)
 | Method | Endpoint | Description |
@@ -126,6 +129,7 @@ Backend → PostgreSQL (persistent data)
 | POST | `/attendance/barcode-scan` | Lecturer marks via matric barcode scan |
 | GET | `/attendance/my` | Student's own attendance records |
 | GET | `/attendance/stats` | Student's own attendance statistics |
+| GET | `/attendance/lecturer-stats` | Lecturer's dashboard statistics and trend |
 
 ### Admin (`/admin`)
 | Method | Endpoint | Description |
@@ -136,6 +140,7 @@ Backend → PostgreSQL (persistent data)
 | POST | `/admin/users/bulk-import` | Bulk CSV/Excel import |
 | POST | `/admin/users/{id}/reset-password` | Reset a user's password |
 | GET | `/admin/dashboard/stats` | Dashboard statistics |
+| GET | `/admin/attendance/records` | Paginated global attendance ledger |
 | GET | `/admin/system/health` | System health check |
 | GET | `/admin/erp/sync-status` | ERP sync status |
 | POST | `/admin/erp/sync` | Trigger ERP sync |

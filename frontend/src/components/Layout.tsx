@@ -21,6 +21,7 @@ function getNavItems(role: string): NavItem[] {
     { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={20} /> },
     { label: 'Users', path: '/admin/users', icon: <Users size={20} /> },
     { label: 'Courses', path: '/admin/courses', icon: <BookOpen size={20} /> },
+    { label: 'Attendance', path: '/admin/attendance', icon: <Database size={20} /> },
     { label: 'ERP Sync', path: '/admin/erp-sync', icon: <RefreshCw size={20} /> },
     { label: 'Settings', path: '/admin/settings', icon: <Settings size={20} /> },
   ]

@@ -20,6 +20,8 @@ from app.schemas import (
     UserResponse,
     UserCreate,
     UserUpdate,
+    PaginatedAttendance,
+    AttendanceResponse,
 )
 from app.utils.security import get_current_user, hash_password, require_admin
 from sqlalchemy import text
@@ -328,3 +330,74 @@ async def system_health(
         gateway=gateway_status,
         uptime=round(time.time() - _APP_START, 1),
     )
+
+
+# ── GET /admin/attendance/records ─────────────────────────────────────────────
+
+@router.get("/attendance/records", response_model=PaginatedAttendance)
+async def list_all_attendance(
+    course_id: Optional[uuid.UUID] = Query(None),
+    student_id: Optional[uuid.UUID] = Query(None),
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    att_status: Optional[str] = Query(None, alias="status"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy.orm import selectinload
+    stmt = (
+        select(Attendance)
+        .options(selectinload(Attendance.course), selectinload(Attendance.student))
+    )
+
+    if course_id:
+        stmt = stmt.where(Attendance.course_id == course_id)
+    if student_id:
+        stmt = stmt.where(Attendance.student_id == student_id)
+    if att_status:
+        stmt = stmt.where(Attendance.status == att_status)
+    if from_date:
+        try:
+            stmt = stmt.where(Attendance.marked_at >= datetime.fromisoformat(from_date))
+        except ValueError:
+            pass
+    if to_date:
+        try:
+            stmt = stmt.where(Attendance.marked_at <= datetime.fromisoformat(to_date))
+        except ValueError:
+            pass
+
+    total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+    offset = (page - 1) * per_page
+
+    records = (
+        await db.execute(
+            stmt.order_by(Attendance.marked_at.desc()).offset(offset).limit(per_page)
+        )
+    ).scalars().all()
+
+    def _att_to_res(a: Attendance):
+        return AttendanceResponse(
+            id=a.id,
+            session_id=a.session_id,
+            course_name=a.course.name if a.course else "",
+            course_code=a.course.code if a.course else "",
+            level=a.course.level if a.course else "",
+            student_name=a.student.full_name if a.student else "",
+            student_matric=a.student.matric_number if a.student else None,
+            status=a.status,
+            marked_by=a.marked_by,
+            marked_at=a.marked_at,
+        )
+
+    return PaginatedAttendance(
+        items=[_att_to_res(a) for a in records],
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=pages,
+    )
+

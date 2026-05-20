@@ -23,6 +23,7 @@ from app.schemas import (
     RapidScanRequest,
     RapidScanResponse,
     ScanResult,
+    LecturerStats,
 )
 from app.utils.rate_limit import limiter
 from app.utils.security import get_current_user, require_admin_or_lecturer, require_student
@@ -474,3 +475,96 @@ async def my_stats(
         percentage=percentage,
         by_course=by_course,
     )
+
+
+# ── GET /attendance/lecturer-stats ────────────────────────────────────────────
+
+@router.get("/lecturer-stats", response_model=LecturerStats)
+async def get_lecturer_stats(
+    current_user: User = Depends(require_admin_or_lecturer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return attendance statistics for a lecturer."""
+    from datetime import timedelta
+    
+    # Courses taught by the lecturer
+    courses = (
+        await db.execute(select(Course).where(Course.lecturer_id == current_user.id))
+    ).scalars().all()
+    course_ids = [c.id for c in courses]
+
+    if not course_ids:
+        return LecturerStats(
+            total_courses=0, active_sessions=0, total_students_taught=0,
+            today_attendance_count=0, attendance_trend=[], course_stats=[]
+        )
+
+    # Active sessions
+    active_sessions = (
+        await db.scalar(
+            select(func.count(Session.id)).where(Session.course_id.in_(course_ids), Session.is_active == True)
+        )
+    ) or 0
+
+    # Total students enrolled in their courses
+    total_students = (
+        await db.scalar(
+            select(func.count(func.distinct(Enrollment.student_id))).where(
+                Enrollment.course_id.in_(course_ids), Enrollment.is_active == True
+            )
+        )
+    ) or 0
+
+    # Today's attendance
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_attendance = (
+        await db.scalar(
+            select(func.count(Attendance.id)).where(
+                Attendance.course_id.in_(course_ids),
+                Attendance.marked_at >= today_start,
+            )
+        )
+    ) or 0
+
+    # Course stats
+    course_stats = []
+    for c in courses:
+        enrolled = (await db.scalar(select(func.count(Enrollment.id)).where(Enrollment.course_id == c.id, Enrollment.is_active == True))) or 0
+        sessions = (await db.scalar(select(func.count(Session.id)).where(Session.course_id == c.id))) or 0
+        total_possible = enrolled * sessions
+        present_count = (await db.scalar(select(func.count(Attendance.id)).where(Attendance.course_id == c.id, Attendance.status.in_(["present", "late"])))) or 0
+        pct = round((present_count / total_possible * 100), 1) if total_possible > 0 else 0.0
+        course_stats.append({
+            "course_name": c.name,
+            "course_code": c.code,
+            "enrolled": enrolled,
+            "sessions": sessions,
+            "attendance_percentage": pct
+        })
+
+    # 7-day trend
+    trend = []
+    for i in range(6, -1, -1):
+        day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
+        day_end = day + timedelta(days=1)
+        day_present = (
+            await db.scalar(
+                select(func.count(Attendance.id)).where(
+                    Attendance.course_id.in_(course_ids),
+                    Attendance.marked_at >= day,
+                    Attendance.marked_at < day_end,
+                    Attendance.status.in_(["present", "late"]),
+                )
+            )
+        ) or 0
+        trend.append({"date": day.strftime("%Y-%m-%d"), "count": float(day_present)})
+
+    return LecturerStats(
+        total_courses=len(courses),
+        active_sessions=active_sessions,
+        total_students_taught=total_students,
+        today_attendance_count=today_attendance,
+        attendance_trend=trend,
+        course_stats=course_stats,
+    )
+

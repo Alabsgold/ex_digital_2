@@ -198,6 +198,16 @@ class AttendanceStats(BaseModel):
     attendance_by_month: List[dict]
 
 
+class LecturerStats(BaseModel):
+    total_courses: int
+    active_sessions: int
+    total_students_taught: int
+    today_attendance_count: int
+    attendance_trend: List[dict]
+    course_stats: List[dict]
+
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SESSION SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════

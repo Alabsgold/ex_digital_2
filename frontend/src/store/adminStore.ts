@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import apiClient from '@/lib/apiClient'
 import type { User } from '@/store/authStore'
+import type { AttendanceRecord } from '@/store/attendanceStore'
 
 export interface DashboardStats {
   total_users: number
@@ -57,10 +58,13 @@ interface AdminState {
   dashboardStats: DashboardStats | null
   users: User[]
   usersPagination: { total: number; page: number; pages: number; per_page: number }
+  attendanceRecords: AttendanceRecord[]
+  attendancePagination: { total: number; page: number; pages: number; per_page: number }
   isLoading: boolean
   error: string | null
   fetchDashboardStats: () => Promise<void>
   fetchUsers: (filters?: UserFilters) => Promise<void>
+  fetchAttendanceRecords: (filters?: any) => Promise<void>
   createUser: (data: UserCreate) => Promise<void>
   updateUser: (id: string, data: UserUpdate) => Promise<void>
   deactivateUser: (id: string) => Promise<void>
@@ -73,6 +77,8 @@ export const useAdminStore = create<AdminState>((set) => ({
   dashboardStats: null,
   users: [],
   usersPagination: { total: 0, page: 1, pages: 1, per_page: 25 },
+  attendanceRecords: [],
+  attendancePagination: { total: 0, page: 1, pages: 1, per_page: 25 },
   isLoading: false,
   error: null,
 
@@ -104,6 +110,28 @@ export const useAdminStore = create<AdminState>((set) => ({
       })
     } catch (err: any) {
       set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch users.' })
+    }
+  },
+
+  fetchAttendanceRecords: async (filters = {}) => {
+    set({ isLoading: true, error: null })
+    try {
+      const params = new URLSearchParams()
+      if (filters.course_id) params.set('course_id', filters.course_id)
+      if (filters.student_id) params.set('student_id', filters.student_id)
+      if (filters.status) params.set('status', filters.status)
+      if (filters.from_date) params.set('from_date', filters.from_date)
+      if (filters.to_date) params.set('to_date', filters.to_date)
+      if (filters.page) params.set('page', String(filters.page))
+      if (filters.per_page) params.set('per_page', String(filters.per_page))
+      const { data } = await apiClient.get(`/admin/attendance/records?${params}`)
+      set({
+        attendanceRecords: data.items,
+        attendancePagination: { total: data.total, page: data.page, pages: data.pages, per_page: data.per_page },
+        isLoading: false,
+      })
+    } catch (err: any) {
+      set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch attendance records.' })
     }
   },
 

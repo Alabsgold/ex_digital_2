@@ -1,19 +1,32 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BookOpen, Play, Users, TrendingUp, Activity } from 'lucide-react'
+import { BookOpen, Play, Users, TrendingUp, Activity, Download } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
 import { useCourseStore } from '@/store/courseStore'
 import { useSessionStore } from '@/store/sessionStore'
+import { useAttendanceStore } from '@/store/attendanceStore'
 import Layout from '@/components/Layout'
 import HelpOverlay from '@/components/HelpOverlay'
 import StatsCard from '@/components/StatsCard'
 import StartSessionModal from '@/components/StartSessionModal'
 import { useToast } from '@/components/Toast'
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="glass-card px-3 py-2 text-xs">
+      <p className="text-muted mb-1">{label}</p>
+      <p className="text-neon-green font-bold">{payload[0].value} marked</p>
+    </div>
+  )
+}
+
 export default function LecturerDashboard() {
   const { user } = useAuthStore()
   const { courses, fetchCourses } = useCourseStore()
   const { activeSessions, fetchActiveSessions } = useSessionStore()
+  const { lecturerStats, fetchLecturerStats } = useAttendanceStore()
   const { success } = useToast()
   const [sessionModalOpen, setSessionModalOpen] = useState(false)
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>()
@@ -21,7 +34,11 @@ export default function LecturerDashboard() {
   useEffect(() => {
     fetchCourses()
     fetchActiveSessions()
-    const interval = setInterval(fetchActiveSessions, 30000)
+    fetchLecturerStats()
+    const interval = setInterval(() => {
+      fetchActiveSessions()
+      fetchLecturerStats()
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -48,9 +65,25 @@ export default function LecturerDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard icon={<BookOpen size={20} />} title="My Courses" value={courses.length} color="cyan" />
           <StatsCard icon={<Activity size={20} />} title="Active Sessions" value={activeSessions.length} color="green" />
-          <StatsCard icon={<Users size={20} />} title="Live Students" value={activeSessions.reduce((a, s) => a + s.attendee_count, 0)} color="amber" />
-          <StatsCard icon={<TrendingUp size={20} />} title="Total Attendees Today" value={activeSessions.reduce((a, s) => a + s.attendee_count, 0)} color="green" />
+          <StatsCard icon={<Users size={20} />} title="Students Taught" value={lecturerStats?.total_students_taught ?? 0} color="amber" />
+          <StatsCard icon={<TrendingUp size={20} />} title="Today's Attendance" value={lecturerStats?.today_attendance_count ?? 0} color="green" />
         </div>
+
+        {/* Attendance Trend Chart */}
+        {(lecturerStats?.attendance_trend?.length ?? 0) > 0 && (
+          <div className="glass-card p-5">
+            <h2 className="section-title mb-4">7-Day Attendance Trend</h2>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={lecturerStats?.attendance_trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fill: '#8888AA', fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
+                <YAxis tick={{ fill: '#8888AA', fontSize: 10 }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="count" stroke="#00FF88" strokeWidth={2} dot={true} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* Active sessions */}
         {activeSessions.length > 0 && (
@@ -119,12 +152,26 @@ export default function LecturerDashboard() {
                     </div>
                   </div>
                   <p className="text-xs text-muted mb-3">{c.department} · {c.enrollment_count} students</p>
-                  <button
-                    onClick={() => openSessionForCourse(c.id)}
-                    className="btn-secondary text-xs px-3 py-2 min-h-[36px] w-full"
-                  >
-                    <Play size={12} /> Start Session
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openSessionForCourse(c.id)}
+                      className="btn-secondary text-xs px-3 py-2 min-h-[36px] flex-1"
+                    >
+                      <Play size={12} /> Start Session
+                    </button>
+                    <button
+                      onClick={() => {
+                        const token = localStorage.getItem('ex-digital-auth') ? JSON.parse(localStorage.getItem('ex-digital-auth')!).state.token : null
+                        if (token) {
+                          window.open(`${import.meta.env.VITE_API_URL}/courses/${c.id}/attendance/export?token=${token}`, '_blank')
+                        }
+                      }}
+                      className="btn-secondary text-xs px-3 py-2 min-h-[36px]"
+                      title="Download CSV"
+                    >
+                      <Download size={12} />
+                    </button>
+                  </div>
                 </motion.div>
               ))}
             </div>

@@ -3,8 +3,12 @@
 import math
 import uuid
 from typing import Optional
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
+from fastapi.responses import StreamingResponse
+import io
+import csv
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -470,3 +474,52 @@ async def course_attendance_stats(
         total_students=total_students,
         attendance_by_month=[],
     )
+
+
+# ── GET /courses/{id}/attendance/export ───────────────────────────────────────
+
+@router.get("/{course_id}/attendance/export")
+async def export_course_attendance(
+    course_id: uuid.UUID,
+    current_user: User = Depends(require_admin_or_lecturer),
+    db: AsyncSession = Depends(get_db),
+):
+    course = await db.scalar(select(Course).where(Course.id == course_id))
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+
+    if current_user.role == "lecturer" and course.lecturer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not teach this course.")
+
+    stmt = (
+        select(Attendance)
+        .options(selectinload(Attendance.student), selectinload(Attendance.session))
+        .where(Attendance.course_id == course_id)
+        .order_by(Attendance.marked_at.asc())
+    )
+    records = (await db.execute(stmt)).scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Session Date",
+        "Session Code",
+        "Student Name",
+        "Matric Number",
+        "Status",
+        "Marked At"
+    ])
+
+    for r in records:
+        writer.writerow([
+            r.session.started_at.strftime("%Y-%m-%d %H:%M") if r.session and r.session.started_at else "",
+            r.session.session_code if r.session else "",
+            r.student.full_name if r.student else "Unknown",
+            r.student.matric_number if r.student else "",
+            r.status.upper(),
+            r.marked_at.strftime("%Y-%m-%d %H:%M:%S") if r.marked_at else ""
+        ])
+
+    response = Response(content=output.getvalue(), media_type="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=attendance_{course.code}_{datetime.now().strftime('%Y%m%d')}.csv"
+    return response

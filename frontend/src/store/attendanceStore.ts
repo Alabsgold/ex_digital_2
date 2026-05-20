@@ -39,16 +39,28 @@ export interface AttendanceFilters {
   per_page?: number
 }
 
+export interface LecturerStats {
+  total_courses: number
+  active_sessions: number
+  total_students_taught: number
+  today_attendance_count: number
+  attendance_trend: { date: string, count: number }[]
+  course_stats: { course_name: string, course_code: string, enrolled: number, sessions: number, attendance_percentage: number }[]
+}
+
 interface AttendanceState {
   records: AttendanceRecord[]
   total: number
   page: number
   pages: number
   stats: AttendanceStats | null
+  lecturerStats: LecturerStats | null
+
   isLoading: boolean
   error: string | null
   fetchMyAttendance: (filters?: AttendanceFilters) => Promise<void>
   fetchStats: () => Promise<void>
+  fetchLecturerStats: () => Promise<void>
   submitSessionCode: (sessionCode: string) => Promise<any>
   clearError: () => void
 }
@@ -59,8 +71,20 @@ export const useAttendanceStore = create<AttendanceState>((set) => ({
   page: 1,
   pages: 1,
   stats: null,
+  lecturerStats: null,
   isLoading: false,
   error: null,
+
+  fetchLecturerStats: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const { data } = await apiClient.get('/attendance/lecturer-stats')
+      set({ lecturerStats: data, isLoading: false })
+    } catch (err: any) {
+      set({ isLoading: false, error: err.response?.data?.detail || 'Failed to fetch lecturer stats.' })
+    }
+  },
+
 
   fetchMyAttendance: async (filters = {}) => {
     set({ isLoading: true, error: null })

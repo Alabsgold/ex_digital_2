@@ -32,6 +32,7 @@ const LecturerCourses = lazy(() => import('@/pages/LecturerCourses'))
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'))
 const AdminUserManagement = lazy(() => import('@/pages/AdminUserManagement'))
 const AdminCourseManagement = lazy(() => import('@/pages/AdminCourseManagement'))
+const AdminAttendanceRecords = lazy(() => import('@/pages/AdminAttendanceRecords'))
 const AdminERPSync = lazy(() => import('@/pages/AdminERPSync'))
 
 // Add qrcode.react dep shim — needs to be installed separately
@@ -141,6 +142,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminCourseManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/attendance"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminAttendanceRecords />
               </ProtectedRoute>
             }
           />
