@@ -126,12 +126,24 @@ async def rapid_scan(
             already_marked += 1
             continue
 
-        # Calculate lateness: mark 'late' if past initial window
         started = session.started_at
         if started.tzinfo is None:
             started = started.replace(tzinfo=timezone.utc)
         now = datetime.now(timezone.utc)
         elapsed_minutes = (now - started).total_seconds() / 60
+        
+        # Check if the session timer has completely expired
+        if elapsed_minutes > session.duration_minutes:
+            results.append(ScanResult(
+                scan_index=idx,
+                status="failed",
+                message="Session timer has expired. You can no longer mark attendance.",
+                session_id=session.id,
+                course_name=session.course.name if session.course else None,
+            ))
+            failed += 1
+            continue
+
         att_status = "late" if elapsed_minutes > settings.QR_SCAN_WINDOW_MINUTES else "present"
 
         attendance = Attendance(

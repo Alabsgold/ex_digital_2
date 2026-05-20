@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Wifi, WifiOff } from 'lucide-react'
 import { useSessionStore, Attendee } from '@/store/sessionStore'
 import { StatusBadge } from '@/components/Badge'
+import { useToast } from '@/components/Toast'
+import { useRef } from 'react'
 
 interface LiveAttendeesStreamProps {
   sessionId: string
@@ -41,11 +43,22 @@ function AttendeeRow({ attendee, index }: { attendee: Attendee; index: number })
 
 export default function LiveAttendeesStream({ sessionId, maxVisible = 20 }: LiveAttendeesStreamProps) {
   const { liveAttendees, sseSource, connectSSE, disconnectSSE } = useSessionStore()
+  const { success } = useToast()
+  const prevCount = useRef(liveAttendees.length)
 
   useEffect(() => {
     connectSSE(sessionId)
     return () => disconnectSSE()
   }, [sessionId])
+
+  useEffect(() => {
+    if (liveAttendees.length > prevCount.current && prevCount.current > 0) {
+      // New attendee added (at the top of the array)
+      const newAttendee = liveAttendees[0]
+      success(`${newAttendee.student_name} marked as ${newAttendee.status}`)
+    }
+    prevCount.current = liveAttendees.length
+  }, [liveAttendees, success])
 
   const isConnected = !!sseSource
   const visible = liveAttendees.slice(0, maxVisible)

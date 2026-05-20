@@ -193,6 +193,38 @@ async def end_session(
     return _session_to_response(session, count)
 
 
+# ── DELETE /sessions/{id} ─────────────────────────────────────────────────────
+
+@router.delete("/{session_id}", response_model=MessageResponse)
+async def cancel_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(require_lecturer),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    """Lecturer cancels a session, removing it and all associated attendance records."""
+    session = await db.scalar(select(Session).where(Session.id == session_id))
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if str(session.created_by) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="You can only cancel your own sessions.")
+
+    # Remove from Redis
+    if session.qr_uuid:
+        await redis.delete(f"session:{session.qr_uuid}")
+    if session.session_code:
+        await redis.delete(f"session_code:{session.session_code}")
+
+    # Delete all attendance associated with this session
+    await db.execute(Attendance.__table__.delete().where(Attendance.session_id == session_id))
+    
+    # Delete the session
+    await db.delete(session)
+    await db.flush()
+
+    return MessageResponse(message="Session and its attendance records have been cancelled and deleted.")
+
+
 # ── GET /sessions/{id}/attendees ──────────────────────────────────────────────
 
 @router.get("/{session_id}/attendees")

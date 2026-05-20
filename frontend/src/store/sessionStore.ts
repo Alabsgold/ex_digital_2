@@ -34,6 +34,7 @@ interface SessionState {
   sseSource: EventSource | null
   startSession: (courseId: string, durationMinutes: number, venue?: string) => Promise<Session>
   endSession: (sessionId: string) => Promise<void>
+  cancelSession: (sessionId: string) => Promise<void>
   fetchActiveSessions: () => Promise<void>
   scanBarcode: (sessionId: string, matricNumber: string) => Promise<any>
   connectSSE: (sessionId: string) => Promise<void>
@@ -83,6 +84,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       get().disconnectSSE()
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to end session.'
+      set({ isLoading: false, error: message })
+      throw new Error(message)
+    }
+  },
+
+  cancelSession: async (sessionId) => {
+    set({ isLoading: true, error: null })
+    try {
+      await apiClient.delete(`/sessions/${sessionId}`)
+      set((state) => ({
+        activeSessions: state.activeSessions.filter((s) => s.id !== sessionId),
+        currentSession: state.currentSession?.id === sessionId ? null : state.currentSession,
+        isLoading: false,
+      }))
+      get().disconnectSSE()
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Failed to cancel session.'
       set({ isLoading: false, error: message })
       throw new Error(message)
     }

@@ -65,11 +65,12 @@ function SessionCountdown({ startedAt, durationMinutes }: { startedAt: string; d
 interface ActiveSessionCardProps {
   session: Session
   onEnd: (session: Session) => void
+  onCancel: (session: Session) => void
   onScan: (session: Session) => void
   onManualEntry: (session: Session) => void
 }
 
-function ActiveSessionCard({ session, onEnd, onScan, onManualEntry }: ActiveSessionCardProps) {
+function ActiveSessionCard({ session, onEnd, onCancel, onScan, onManualEntry }: ActiveSessionCardProps) {
   return (
     <motion.div
       layout
@@ -99,7 +100,18 @@ function ActiveSessionCard({ session, onEnd, onScan, onManualEntry }: ActiveSess
       <div className="flex items-center gap-4 mb-4 px-1">
         <div className="flex items-center gap-1.5 text-xs text-muted">
           <Users size={12} />
-          <span><strong className="text-white-text">{session.attendee_count}</strong> students marked</span>
+          <span>
+            <motion.strong
+              key={session.attendee_count}
+              initial={{ scale: 1.5, color: '#00FF88' }}
+              animate={{ scale: 1, color: '#FFFFFF' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 10 }}
+              className="text-white-text inline-block origin-left"
+            >
+              {session.attendee_count}
+            </motion.strong>{' '}
+            students marked
+          </span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted">
           <Activity size={12} />
@@ -127,16 +139,23 @@ function ActiveSessionCard({ session, onEnd, onScan, onManualEntry }: ActiveSess
         >
           Roll Call
         </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          fullWidth
-          className="col-span-2"
-          leftIcon={<StopCircle size={14} />}
-          onClick={() => onEnd(session)}
-        >
-          End Session
-        </Button>
+        <div className="col-span-2 flex gap-3">
+          <Button
+            variant="danger"
+            size="sm"
+            fullWidth
+            leftIcon={<StopCircle size={14} />}
+            onClick={() => onEnd(session)}
+          >
+            End Session
+          </Button>
+          <button
+            onClick={() => onCancel(session)}
+            className="text-xs text-muted hover:text-soft-red transition-colors underline underline-offset-2 flex items-center justify-center px-4"
+          >
+            Cancel Session
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 pt-4 border-t border-white/[0.05]">
@@ -147,11 +166,12 @@ function ActiveSessionCard({ session, onEnd, onScan, onManualEntry }: ActiveSess
 }
 
 export default function LecturerSessions() {
-  const { activeSessions, fetchActiveSessions, endSession } = useSessionStore()
+  const { activeSessions, fetchActiveSessions, endSession, cancelSession } = useSessionStore()
   const { success, error: toastError } = useToast()
 
   const [startModalOpen, setStartModalOpen] = useState(false)
   const [endTarget, setEndTarget] = useState<Session | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<Session | null>(null)
   const [scanTarget, setScanTarget] = useState<Session | null>(null)
   const [manualTarget, setManualTarget] = useState<Session | null>(null)
   const [ending, setEnding] = useState(false)
@@ -170,6 +190,20 @@ export default function LecturerSessions() {
       await endSession(endTarget.id)
       success(`Session for ${endTarget.course_name} ended.`)
       setEndTarget(null)
+    } catch (err: any) {
+      toastError(err.message)
+    } finally {
+      setEnding(false)
+    }
+  }
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return
+    setEnding(true)
+    try {
+      await cancelSession(cancelTarget.id)
+      success(`Session for ${cancelTarget.course_name} has been cancelled.`)
+      setCancelTarget(null)
     } catch (err: any) {
       toastError(err.message)
     } finally {
@@ -225,6 +259,7 @@ export default function LecturerSessions() {
                   key={s.id}
                   session={s}
                   onEnd={(sess) => setEndTarget(sess)}
+                  onCancel={(sess) => setCancelTarget(sess)}
                   onScan={(sess) => setScanTarget(sess)}
                   onManualEntry={(sess) => setManualTarget(sess)}
                 />
@@ -271,7 +306,6 @@ export default function LecturerSessions() {
         />
       )}
 
-      {/* End session confirm */}
       <ConfirmModal
         isOpen={!!endTarget}
         onClose={() => setEndTarget(null)}
@@ -280,6 +314,18 @@ export default function LecturerSessions() {
         message={`This will stop accepting attendance for "${endTarget?.course_name}". Students who haven't scanned yet will be marked absent.`}
         confirmLabel="End Session"
         variant="danger"
+        loading={ending}
+      />
+
+      <ConfirmModal
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Session?"
+        message={`Are you sure you want to cancel the session for "${cancelTarget?.course_name}"? This will delete the session and remove ALL attendance records marked so far.`}
+        confirmLabel="Yes, Cancel"
+        cancelLabel="Keep Session"
+        variant="warning"
         loading={ending}
       />
 
