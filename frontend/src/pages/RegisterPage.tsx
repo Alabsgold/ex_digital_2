@@ -166,7 +166,7 @@ export default function RegisterPage() {
               type="email"
               value={form.email}
               onChange={(e) => set('email', e.target.value)}
-              placeholder="you@university.edu"
+              placeholder="you@jabu.edu.ng"
               error={errors.email}
               required
               autoComplete="email"

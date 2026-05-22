@@ -86,7 +86,7 @@ export default function LoginPage() {
                 type="text"
                 value={loginValue}
                 onChange={(e) => { setLoginValue(e.target.value); setErrors((e) => ({ ...e, login: '' })) }}
-                placeholder="you@university.edu or ex-admin"
+                placeholder="you@jabu.edu.ng"
                 error={errors.login}
                 required
                 autoComplete="email"
