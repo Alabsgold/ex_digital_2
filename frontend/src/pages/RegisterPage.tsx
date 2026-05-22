@@ -157,6 +157,7 @@ export default function RegisterPage() {
               onChange={(e) => set('matric_number', e.target.value.toUpperCase())}
               placeholder="e.g. 2403030099"
               error={errors.matric_number}
+              required
               className="font-mono"
             />
 
