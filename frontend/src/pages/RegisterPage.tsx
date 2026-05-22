@@ -155,7 +155,7 @@ export default function RegisterPage() {
               label="Matric Number (optional)"
               value={form.matric_number}
               onChange={(e) => set('matric_number', e.target.value.toUpperCase())}
-              placeholder="e.g. CSC/19/0001"
+              placeholder="e.g. 2403030099"
               error={errors.matric_number}
               className="font-mono"
             />

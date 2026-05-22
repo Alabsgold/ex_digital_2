@@ -97,7 +97,7 @@ export default function LoginPage() {
                 label="Matric Number"
                 value={loginValue}
                 onChange={(e) => { setLoginValue(e.target.value.toUpperCase()); setErrors((er) => ({ ...er, login: '' })) }}
-                placeholder="e.g. CSC/19/0001"
+                placeholder="e.g. Enter your 10 digit matric number"
                 error={errors.login}
                 required
                 autoComplete="username"
